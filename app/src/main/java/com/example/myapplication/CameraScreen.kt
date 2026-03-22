@@ -46,7 +46,7 @@ import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PhotoCamera
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.FlipCameraAndroid
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.Button
@@ -106,6 +106,7 @@ fun CameraScreen(navController: NavController, viewModel: TranslatorViewModel) {
     var flashEnabled by remember { mutableStateOf(false) }
     var showSourceDropdown by remember { mutableStateOf(false) }
     var showTargetDropdown by remember { mutableStateOf(false) }
+    var lensFacing by remember { mutableStateOf(CameraSelector.LENS_FACING_BACK) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -131,15 +132,16 @@ fun CameraScreen(navController: NavController, viewModel: TranslatorViewModel) {
         imageCapture.flashMode = if (flashEnabled) ImageCapture.FLASH_MODE_ON else ImageCapture.FLASH_MODE_OFF
     }
 
-    DisposableEffect(hasCameraPermission) {
+    DisposableEffect(hasCameraPermission, lensFacing) {
         if (!hasCameraPermission) return@DisposableEffect onDispose {}
         val future = ProcessCameraProvider.getInstance(context)
         future.addListener({
             val cameraProvider = future.get()
             val preview = Preview.Builder().build().also { it.setSurfaceProvider(previewView.surfaceProvider) }
+            val cameraSelector = CameraSelector.Builder().requireLensFacing(lensFacing).build()
             try {
                 cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_BACK_CAMERA, preview, imageCapture)
+                cameraProvider.bindToLifecycle(lifecycleOwner, cameraSelector, preview, imageCapture)
             } catch (_: Exception) {}
         }, ContextCompat.getMainExecutor(context))
         onDispose {
@@ -425,10 +427,15 @@ fun CameraScreen(navController: NavController, viewModel: TranslatorViewModel) {
                             }
                         }
 
-                        // History / Refresh
+                        // Flip camera
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.clickable { navController.navigate("home") }
+                            modifier = Modifier.clickable {
+                                lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK)
+                                    CameraSelector.LENS_FACING_FRONT
+                                else
+                                    CameraSelector.LENS_FACING_BACK
+                            }
                         ) {
                             Box(
                                 modifier = Modifier
@@ -436,10 +443,10 @@ fun CameraScreen(navController: NavController, viewModel: TranslatorViewModel) {
                                     .background(SurfaceGray, CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Default.Refresh, "History", tint = TextPrimary, modifier = Modifier.size(24.dp))
+                                Icon(Icons.Default.FlipCameraAndroid, "Flip Camera", tint = TextPrimary, modifier = Modifier.size(24.dp))
                             }
                             Spacer(Modifier.height(4.dp))
-                            Text("History", fontSize = 10.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
+                            Text("Flip", fontSize = 10.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
                         }
                     }
 
